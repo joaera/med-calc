@@ -1,0 +1,433 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#F4F7F8">
+<title>투약 계산기</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+:root{
+  --bg:#F4F7F8; --panel:#FFFFFF; --ink:#18262F; --ink-2:#4F6470; --line:#D6E0E5;
+  --accent:#0E7C78; --accent-ink:#FFFFFF; --accent-soft:#E1F1F0;
+  --warn:#9A5B00; --warn-soft:#FFF3DE; --crit:#B3261E; --crit-soft:#FBE6E4;
+  --field:#FFFFFF; --field-line:#B9C8CF; --shadow:0 1px 2px rgba(24,38,47,.06);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#10191E; --panel:#182329; --ink:#E6EEF1; --ink-2:#9DB0BA; --line:#2A3A42;
+    --accent:#3BB8B2; --accent-ink:#0B1B1A; --accent-soft:#173634;
+    --warn:#F0B35B; --warn-soft:#3A2A10; --crit:#F08F87; --crit-soft:#3E1C1A;
+    --field:#121C21; --field-line:#3A4D57; --shadow:none;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#10191E; --panel:#182329; --ink:#E6EEF1; --ink-2:#9DB0BA; --line:#2A3A42;
+  --accent:#3BB8B2; --accent-ink:#0B1B1A; --accent-soft:#173634;
+  --warn:#F0B35B; --warn-soft:#3A2A10; --crit:#F08F87; --crit-soft:#3E1C1A;
+  --field:#121C21; --field-line:#3A4D57; --shadow:none;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"IBM Plex Sans KR","Apple SD Gothic Neo","Noto Sans KR",system-ui,sans-serif;font-size:15px;line-height:1.5;padding:0 16px calc(24px + env(safe-area-inset-bottom))}
+.wrap{max-width:560px;margin:0 auto}
+header{padding:18px 0 10px;display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+header h1{font-size:20px;margin:0;font-weight:700;letter-spacing:-.01em}
+header .sub{font-size:12px;color:var(--ink-2)}
+.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:4px;position:sticky;top:8px;z-index:5;box-shadow:var(--shadow)}
+.tabs button{border:0;background:transparent;color:var(--ink-2);font:inherit;font-weight:600;font-size:13px;padding:9px 4px;border-radius:9px;cursor:pointer}
+.tabs button[aria-selected="true"]{background:var(--accent);color:var(--accent-ink)}
+.tabs button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.panel{display:none;padding-top:14px}
+.panel.on{display:block}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:12px;box-shadow:var(--shadow)}
+.card h2{font-size:15px;margin:0 0 10px;font-weight:700}
+.card h2 small{font-weight:500;color:var(--ink-2);font-size:12px;margin-left:6px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grid .full{grid-column:1/-1}
+label{display:block;font-size:12px;color:var(--ink-2);margin-bottom:4px;letter-spacing:.02em}
+.in{display:flex;align-items:center;border:1px solid var(--field-line);background:var(--field);border-radius:10px;overflow:hidden}
+.in input,.in select{flex:1;min-width:0;border:0;background:transparent;color:var(--ink);font:inherit;font-size:17px;padding:10px 12px;font-family:"IBM Plex Mono","IBM Plex Sans KR",monospace}
+.in select{font-family:inherit;font-size:15px;appearance:none;-webkit-appearance:none}
+.in .unit{padding:0 10px;color:var(--ink-2);font-size:12px;white-space:nowrap;border-left:1px solid var(--line);align-self:stretch;display:flex;align-items:center;background:var(--bg)}
+.in:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg button{flex:1;border:1px solid var(--field-line);background:var(--field);color:var(--ink);font:inherit;font-size:13px;font-weight:600;padding:8px 6px;border-radius:9px;cursor:pointer;min-width:52px}
+.seg button[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.seg button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.res{border-top:1px dashed var(--line);margin-top:14px;padding-top:12px}
+.res .row{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:6px 0}
+.res .k{font-size:13px;color:var(--ink-2)}
+.res .v{font-family:"IBM Plex Mono",monospace;font-weight:600;font-size:18px;font-variant-numeric:tabular-nums;text-align:right}
+.res .v.big{font-size:28px;color:var(--accent);line-height:1.1}
+.res .v small{font-size:12px;color:var(--ink-2);font-weight:500;margin-left:3px;font-family:"IBM Plex Sans KR",sans-serif}
+.steps{margin-top:8px;font-size:13px;color:var(--ink-2);border-left:3px solid var(--accent-soft);padding:6px 10px;font-family:"IBM Plex Mono","IBM Plex Sans KR",monospace;white-space:pre-wrap;line-height:1.6}
+.toggle{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--accent);background:none;border:0;padding:6px 0;cursor:pointer;font-weight:600;font-family:inherit}
+.note{font-size:12px;color:var(--ink-2);margin:8px 0 0}
+.flag{font-size:12px;padding:8px 10px;border-radius:9px;margin-top:10px}
+.flag.warn{background:var(--warn-soft);color:var(--warn)}
+.flag.crit{background:var(--crit-soft);color:var(--crit)}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.chips button{border:1px solid var(--line);background:var(--bg);color:var(--ink);font:inherit;font-size:12px;padding:5px 10px;border-radius:999px;cursor:pointer}
+.chips button[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft);color:var(--accent);font-weight:600}
+.btn{display:block;width:100%;border:0;background:var(--accent);color:var(--accent-ink);font:inherit;font-weight:700;font-size:15px;padding:12px;border-radius:10px;cursor:pointer;margin-top:12px}
+.btn.ghost{background:var(--panel);color:var(--accent);border:1px solid var(--accent)}
+.btn:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.q{font-size:15px;line-height:1.7;background:var(--bg);border-radius:10px;padding:12px}
+.q b{font-family:"IBM Plex Mono",monospace;font-weight:600}
+.ans{margin-top:10px}
+.ans .ok{color:var(--accent);font-weight:700}
+.ans .no{color:var(--crit);font-weight:700}
+footer{font-size:11.5px;color:var(--ink-2);padding:12px 4px 0;line-height:1.6}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:6px 4px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--ink-2);font-weight:600;font-size:12px}
+td.num{font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums;white-space:nowrap}
+@media (max-width:380px){.grid{grid-template-columns:1fr}.tabs button{font-size:12px}}
+@media (prefers-reduced-motion:no-preference){.panel.on{animation:in .18s ease}}
+@keyframes in{from{opacity:.6;transform:translateY(3px)}to{opacity:1;transform:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>투약 계산기</h1>
+  <span class="sub">수액 · 소아 용량 · 용량 환산 · 연습</span>
+</header>
+
+<div class="tabs" role="tablist">
+  <button role="tab" aria-selected="true" data-tab="fluid" id="tab-fluid">수액</button>
+  <button role="tab" aria-selected="false" data-tab="peds" id="tab-peds">소아 용량</button>
+  <button role="tab" aria-selected="false" data-tab="dose" id="tab-dose">용량 환산</button>
+  <button role="tab" aria-selected="false" data-tab="quiz" id="tab-quiz">연습문제</button>
+</div>
+
+<!-- ===================== 수액 ===================== -->
+<section class="panel on" id="p-fluid" role="tabpanel">
+
+  <div class="card">
+    <h2>주입속도 <small>gtt/min ↔ mL/h</small></h2>
+    <div class="grid">
+      <div><label for="f-vol">총 수액량</label><div class="in"><input id="f-vol" type="number" inputmode="decimal" value="1000" min="0"><span class="unit">mL</span></div></div>
+      <div><label for="f-time">주입 시간</label><div class="in"><input id="f-time" type="number" inputmode="decimal" value="8" min="0"><span class="unit">시간</span></div></div>
+      <div class="full"><label>세트 (drop factor)</label>
+        <div class="seg" id="f-df">
+          <button aria-pressed="false" data-v="10">10 gtt</button>
+          <button aria-pressed="false" data-v="15">15 gtt</button>
+          <button aria-pressed="true" data-v="20">20 gtt</button>
+          <button aria-pressed="false" data-v="60">60 gtt</button>
+        </div>
+      </div>
+    </div>
+    <div class="res" id="f-res"></div>
+  </div>
+
+  <div class="card">
+    <h2>mL/h → gtt/min <small>펌프 없이 수동 조절할 때</small></h2>
+    <div class="grid">
+      <div><label for="f2-rate">지시 속도</label><div class="in"><input id="f2-rate" type="number" inputmode="decimal" value="80" min="0"><span class="unit">mL/h</span></div></div>
+      <div><label for="f2-df">세트</label><div class="in"><select id="f2-df"><option value="10">10 gtt/mL</option><option value="15">15 gtt/mL</option><option value="20" selected>20 gtt/mL</option><option value="60">60 gtt/mL</option></select></div></div>
+    </div>
+    <div class="res" id="f2-res"></div>
+  </div>
+
+  <div class="card">
+    <h2>소아 유지수액 <small>Holliday–Segar (4-2-1)</small></h2>
+    <div class="grid">
+      <div><label for="m-wt">체중</label><div class="in"><input id="m-wt" type="number" inputmode="decimal" value="18" min="0" step="0.1"><span class="unit">kg</span></div></div>
+      <div><label for="m-df">세트 (gtt/min 환산용)</label><div class="in"><select id="m-df"><option value="60" selected>60 gtt/mL</option><option value="20">20 gtt/mL</option><option value="15">15 gtt/mL</option><option value="10">10 gtt/mL</option></select></div></div>
+    </div>
+    <div class="res" id="m-res"></div>
+  </div>
+
+  <div class="card">
+    <h2>볼루스 <small>등장성 수액 10 · 20 mL/kg</small></h2>
+    <div class="grid">
+      <div><label for="b-wt">체중</label><div class="in"><input id="b-wt" type="number" inputmode="decimal" value="18" min="0" step="0.1"><span class="unit">kg</span></div></div>
+      <div><label for="b-min">투여 시간</label><div class="in"><input id="b-min" type="number" inputmode="decimal" value="20" min="1"><span class="unit">분</span></div></div>
+    </div>
+    <div class="res" id="b-res"></div>
+    <p class="note">10 mL/kg는 심장·신장 질환 등 용량 부하 주의 대상, 20 mL/kg는 일반적 초기 볼루스 예시입니다. 실제 용량은 처방과 환자 상태에 따릅니다.</p>
+  </div>
+</section>
+
+<!-- ===================== 소아 용량 ===================== -->
+<section class="panel" id="p-peds" role="tabpanel">
+
+  <div class="card">
+    <h2>체중 기준 <small>mg/kg → 투여량 · 주사량</small></h2>
+    <div class="chips" id="pd-presets">
+      <button aria-pressed="true" data-name="직접 입력" data-lo="" data-hi="" data-conc="" data-max="">직접 입력</button>
+      <button data-name="아세트아미노펜 시럽" data-lo="10" data-hi="15" data-conc="32" data-max="75" data-maxlabel="1일 최대 75 mg/kg">아세트아미노펜 (32 mg/mL)</button>
+      <button data-name="이부프로펜 시럽" data-lo="5" data-hi="10" data-conc="20" data-max="40" data-maxlabel="1일 최대 40 mg/kg">이부프로펜 (20 mg/mL)</button>
+      <button data-name="에피네프린 1:10,000 (심정지 IV/IO)" data-lo="0.01" data-hi="0.01" data-conc="0.1" data-max="" data-maxlabel="">에피네프린 1:10,000</button>
+      <button data-name="아트로핀" data-lo="0.02" data-hi="0.02" data-conc="0.5" data-max="" data-maxlabel="1회 최소 0.1 mg">아트로핀 (0.5 mg/mL)</button>
+    </div>
+    <div class="grid">
+      <div><label for="pd-wt">체중</label><div class="in"><input id="pd-wt" type="number" inputmode="decimal" value="12" min="0" step="0.1"><span class="unit">kg</span></div></div>
+      <div><label for="pd-conc">약물 농도</label><div class="in"><input id="pd-conc" type="number" inputmode="decimal" value="32" min="0" step="any"><span class="unit">mg/mL</span></div></div>
+      <div><label for="pd-lo">용량 (최소)</label><div class="in"><input id="pd-lo" type="number" inputmode="decimal" value="10" min="0" step="any"><span class="unit">mg/kg</span></div></div>
+      <div><label for="pd-hi">용량 (최대, 선택)</label><div class="in"><input id="pd-hi" type="number" inputmode="decimal" value="15" min="0" step="any"><span class="unit">mg/kg</span></div></div>
+    </div>
+    <div class="res" id="pd-res"></div>
+    <p class="note">프리셋의 용량은 교육용 예시입니다. 실제 투약은 처방·약품설명서·기관 프로토콜을 확인하세요.</p>
+  </div>
+
+  <div class="card">
+    <h2>체표면적 기준 <small>BSA · mg/m²</small></h2>
+    <div class="grid">
+      <div><label for="bs-wt">체중</label><div class="in"><input id="bs-wt" type="number" inputmode="decimal" value="12" min="0" step="0.1"><span class="unit">kg</span></div></div>
+      <div><label for="bs-ht">신장</label><div class="in"><input id="bs-ht" type="number" inputmode="decimal" value="88" min="0"><span class="unit">cm</span></div></div>
+      <div><label for="bs-dose">처방 용량</label><div class="in"><input id="bs-dose" type="number" inputmode="decimal" value="30" min="0" step="any"><span class="unit">mg/m²</span></div></div>
+      <div><label for="bs-adult">성인 용량 (선택)</label><div class="in"><input id="bs-adult" type="number" inputmode="decimal" value="500" min="0" step="any"><span class="unit">mg</span></div></div>
+    </div>
+    <div class="res" id="bs-res"></div>
+    <p class="note">BSA는 Mosteller 공식 √(cm × kg ⁄ 3600). 성인 용량 입력 시 소아 용량 = 성인 용량 × BSA ⁄ 1.73 도 함께 계산합니다.</p>
+  </div>
+
+  <div class="card">
+    <h2>고전적 추정 공식 <small>교과서 참고용</small></h2>
+    <div class="grid">
+      <div><label for="cl-adult">성인 용량</label><div class="in"><input id="cl-adult" type="number" inputmode="decimal" value="500" min="0" step="any"><span class="unit">mg</span></div></div>
+      <div><label for="cl-wt">체중</label><div class="in"><input id="cl-wt" type="number" inputmode="decimal" value="12" min="0" step="0.1"><span class="unit">kg</span></div></div>
+      <div><label for="cl-age">나이</label><div class="in"><input id="cl-age" type="number" inputmode="decimal" value="2" min="0" step="any"><span class="unit">세</span></div></div>
+      <div><label for="cl-mo">월령 (Fried)</label><div class="in"><input id="cl-mo" type="number" inputmode="decimal" value="24" min="0"><span class="unit">개월</span></div></div>
+    </div>
+    <div class="res" id="cl-res"></div>
+    <p class="note">Clark(체중 lb ⁄ 150), Young(나이 ⁄ (나이+12)), Fried(월령 ⁄ 150)는 역사적 추정식으로, 실제 임상에서는 mg/kg 또는 BSA 기준을 우선합니다.</p>
+  </div>
+</section>
+
+<!-- ===================== 용량 환산 ===================== -->
+<section class="panel" id="p-dose" role="tabpanel">
+
+  <div class="card">
+    <h2>처방량 → 투여량 <small>정제 · 시럽 · 주사</small></h2>
+    <div class="grid">
+      <div><label for="d-order">처방 용량</label><div class="in"><input id="d-order" type="number" inputmode="decimal" value="250" min="0" step="any"><span class="unit">mg</span></div></div>
+      <div><label for="d-have">보유 약물 함량</label><div class="in"><input id="d-have" type="number" inputmode="decimal" value="125" min="0" step="any"><span class="unit">mg</span></div></div>
+      <div><label for="d-per">함량당 형태</label><div class="in"><input id="d-per" type="number" inputmode="decimal" value="5" min="0" step="any"><span class="unit" id="d-per-unit">mL</span></div></div>
+      <div><label for="d-form">제형</label><div class="in"><select id="d-form"><option value="mL">시럽 / 주사 (mL)</option><option value="정">정제 (정)</option><option value="캡슐">캡슐</option></select></div></div>
+    </div>
+    <div class="res" id="d-res"></div>
+    <p class="note">공식: 투여량 = 처방 용량 ⁄ 보유 함량 × 함량당 형태 (D ⁄ H × Q).</p>
+  </div>
+
+  <div class="card">
+    <h2>단위 환산</h2>
+    <div class="grid">
+      <div><label for="u-val">값</label><div class="in"><input id="u-val" type="number" inputmode="decimal" value="0.5" step="any"><span class="unit" id="u-from-unit">g</span></div></div>
+      <div><label for="u-from">단위</label><div class="in"><select id="u-from"><option value="g">g</option><option value="mg" selected>mg</option><option value="mcg">mcg (µg)</option><option value="L">L</option><option value="mL">mL</option></select></div></div>
+    </div>
+    <div class="res" id="u-res"></div>
+    <p class="note">1 g = 1,000 mg = 1,000,000 mcg · 1 L = 1,000 mL. 처방에서 µg는 mcg로 표기합니다(µ와 m 혼동 방지).</p>
+  </div>
+
+  <div class="card">
+    <h2>% 용액 · 농도</h2>
+    <div class="grid">
+      <div><label for="pc-pct">농도</label><div class="in"><input id="pc-pct" type="number" inputmode="decimal" value="10" min="0" step="any"><span class="unit">%</span></div></div>
+      <div><label for="pc-vol">용량</label><div class="in"><input id="pc-vol" type="number" inputmode="decimal" value="50" min="0" step="any"><span class="unit">mL</span></div></div>
+    </div>
+    <div class="res" id="pc-res"></div>
+    <p class="note">% (w/v) = 100 mL당 g. 예) 10% 포도당 50 mL = 5 g. 1:1,000 = 1 g/1,000 mL = 1 mg/mL, 1:10,000 = 0.1 mg/mL.</p>
+  </div>
+</section>
+
+<!-- ===================== 연습문제 ===================== -->
+<section class="panel" id="p-quiz" role="tabpanel">
+  <div class="card">
+    <h2>연습문제 <small>무작위 생성 · 손으로 풀고 확인</small></h2>
+    <div class="chips" id="qz-type">
+      <button aria-pressed="true" data-t="drip">주입속도</button>
+      <button data-t="maint">유지수액</button>
+      <button data-t="dhq">D/H×Q</button>
+      <button data-t="mgkg">소아 mg/kg</button>
+      <button data-t="mix">전체 섞기</button>
+    </div>
+    <div class="q" id="qz-q">문제를 생성하세요.</div>
+    <div class="grid" style="margin-top:10px">
+      <div class="full"><label for="qz-ans">내 답</label><div class="in"><input id="qz-ans" type="number" inputmode="decimal" step="any" placeholder="숫자만 입력"><span class="unit" id="qz-unit">—</span></div></div>
+    </div>
+    <div class="ans" id="qz-res"></div>
+    <button class="btn ghost" id="qz-check">정답 확인</button>
+    <button class="btn" id="qz-new">새 문제</button>
+    <div class="res" style="margin-top:12px">
+      <div class="row"><span class="k">푼 문제 / 정답</span><span class="v" id="qz-score">0 / 0</span></div>
+    </div>
+    <p class="note">채점 허용 오차: gtt/min은 ±1 방울, 그 외는 ±1%. 문제마다 "풀이 보기"에서 계산 과정을 확인할 수 있습니다.</p>
+  </div>
+</section>
+
+<footer>
+  교육용 계산 도구입니다. 결과는 반드시 처방·약품설명서·기관 프로토콜과 대조하고, 계산 결과 중 반올림은 표시된 방식(gtt/min 정수, mL/h 소수 1자리)을 따릅니다.<br>
+  근거: 주입속도·D/H×Q·단위 환산은 표준 간호 투약계산 공식, 유지수액은 Holliday &amp; Segar(1957) 4-2-1 규칙, BSA는 Mosteller(1987).
+</footer>
+</div>
+
+<script>
+(function(){
+  const $=id=>document.getElementById(id);
+  const num=id=>{const v=parseFloat($(id).value);return isFinite(v)?v:NaN};
+  const fmt=(v,d=1)=>isFinite(v)?Number(v.toFixed(d)).toLocaleString('ko-KR',{maximumFractionDigits:d}):'—';
+  const showSteps={};
+  function render(id,rows,steps,flags){
+    const el=$(id);
+    let h=rows.map(r=>`<div class="row"><span class="k">${r[0]}</span><span class="v${r[3]?' big':''}">${r[1]}<small>${r[2]||''}</small></span></div>`).join('');
+    if(flags)h+=flags.map(f=>`<div class="flag ${f[0]}">${f[1]}</div>`).join('');
+    if(steps){const open=showSteps[id];h+=`<button class="toggle" data-steps="${id}" aria-expanded="${!!open}">${open?'▾ 계산 과정 닫기':'▸ 계산 과정 보기'}</button>`;if(open)h+=`<div class="steps">${steps}</div>`}
+    el.innerHTML=h;
+  }
+  document.addEventListener('click',e=>{const b=e.target.closest('[data-steps]');if(!b)return;const id=b.dataset.steps;showSteps[id]=!showSteps[id];recalcAll()});
+
+  /* tabs */
+  const tabs=[...document.querySelectorAll('.tabs [role=tab]')];
+  function setTab(name){tabs.forEach(t=>t.setAttribute('aria-selected',String(t.dataset.tab===name)));document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('on',p.id==='p-'+name));try{localStorage.setItem('mc-tab',name)}catch(_){}}
+  tabs.forEach(t=>t.addEventListener('click',()=>setTab(t.dataset.tab)));
+  try{const s=localStorage.getItem('mc-tab');if(s)setTab(s)}catch(_){}
+
+  /* seg buttons */
+  document.querySelectorAll('.seg').forEach(seg=>seg.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;seg.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed','false'));b.setAttribute('aria-pressed','true');recalcAll()}));
+  const segVal=id=>parseFloat($(id).querySelector('[aria-pressed="true"]').dataset.v);
+
+  /* ---------- 수액 ---------- */
+  function calcDrip(){
+    const V=num('f-vol'),T=num('f-time'),df=segVal('f-df');
+    if(!(V>0&&T>0))return render('f-res',[['입력을 확인하세요','—']]);
+    const mlh=V/T, gtt=V*df/(T*60);
+    render('f-res',[['시간당 주입량',fmt(mlh,1),'mL/h'],['분당 방울수',Math.round(gtt),'gtt/min',true],['약 몇 초에 1방울',fmt(60/gtt,1),'초']],
+      `mL/h = ${V} mL ÷ ${T} h = ${fmt(mlh,2)} mL/h\ngtt/min = ${V} mL × ${df} gtt/mL ÷ (${T} h × 60 min)\n        = ${fmt(V*df,0)} ÷ ${T*60} = ${fmt(gtt,2)} → ${Math.round(gtt)} gtt/min (정수 반올림)`);
+  }
+  function calcRate(){
+    const r=num('f2-rate'),df=parseFloat($('f2-df').value);
+    if(!(r>0))return render('f2-res',[['입력을 확인하세요','—']]);
+    const gtt=r*df/60;
+    render('f2-res',[['분당 방울수',Math.round(gtt),'gtt/min',true],['약 몇 초에 1방울',fmt(60/gtt,1),'초']],
+      `gtt/min = ${r} mL/h × ${df} gtt/mL ÷ 60 min = ${fmt(gtt,2)} → ${Math.round(gtt)} gtt/min${df===60?'\n(60 gtt 세트에서는 mL/h 숫자 = gtt/min)':''}`);
+  }
+  function calcMaint(){
+    const w=num('m-wt'),df=parseFloat($('m-df').value);
+    if(!(w>0))return render('m-res',[['입력을 확인하세요','—']]);
+    let mlh=0,s=[];
+    const a=Math.min(w,10);mlh+=a*4;s.push(`첫 10 kg: ${fmt(a,1)} kg × 4 = ${fmt(a*4,1)} mL/h`);
+    if(w>10){const b=Math.min(w-10,10);mlh+=b*2;s.push(`다음 10 kg: ${fmt(b,1)} kg × 2 = ${fmt(b*2,1)} mL/h`)}
+    if(w>20){const c=w-20;mlh+=c*1;s.push(`20 kg 초과: ${fmt(c,1)} kg × 1 = ${fmt(c,1)} mL/h`)}
+    let day=0,sd=[];const A=Math.min(w,10);day+=A*100;sd.push(`${fmt(A,1)}×100`);
+    if(w>10){const B=Math.min(w-10,10);day+=B*50;sd.push(`${fmt(B,1)}×50`)}
+    if(w>20){day+=(w-20)*20;sd.push(`${fmt(w-20,1)}×20`)}
+    render('m-res',[['시간당 유지수액',fmt(mlh,1),'mL/h',true],['1일 유지수액',fmt(day,0),'mL/day'],['분당 방울수 ('+df+' gtt)',Math.round(mlh*df/60),'gtt/min']],
+      `4-2-1 (시간당)\n${s.join('\n')}\n합계 = ${fmt(mlh,1)} mL/h\n\n100-50-20 (1일)\n${sd.join(' + ')} = ${fmt(day,0)} mL/day  (÷24 = ${fmt(day/24,1)} mL/h)`,
+      w>=70?[['warn','체중 70 kg 이상은 성인 기준 수액 계획을 따르는 것이 일반적입니다.']]:null);
+  }
+  function calcBolus(){
+    const w=num('b-wt'),m=num('b-min');
+    if(!(w>0&&m>0))return render('b-res',[['입력을 확인하세요','—']]);
+    const v10=w*10,v20=w*20;
+    render('b-res',[['10 mL/kg',fmt(v10,0),'mL'],['20 mL/kg',fmt(v20,0),'mL',true],['20 mL/kg를 '+m+'분에',fmt(v20/m*60,0),'mL/h'],['위 속도, 20 gtt 세트',Math.round(v20/m*20),'gtt/min']],
+      `10 mL/kg × ${w} kg = ${fmt(v10,0)} mL\n20 mL/kg × ${w} kg = ${fmt(v20,0)} mL\n${fmt(v20,0)} mL ÷ ${m} min × 60 = ${fmt(v20/m*60,1)} mL/h\ngtt/min = ${fmt(v20,0)} mL × 20 ÷ ${m} min = ${fmt(v20/m*20,1)}`);
+  }
+
+  /* ---------- 소아 ---------- */
+  $('pd-presets').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+    $('pd-presets').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed','false'));b.setAttribute('aria-pressed','true');
+    if(b.dataset.lo!==''){$('pd-lo').value=b.dataset.lo;$('pd-hi').value=b.dataset.hi;$('pd-conc').value=b.dataset.conc}
+    recalcAll()});
+  function calcPeds(){
+    const w=num('pd-wt'),c=num('pd-conc'),lo=num('pd-lo'),hi=num('pd-hi');
+    const p=$('pd-presets').querySelector('[aria-pressed="true"]');
+    if(!(w>0&&lo>=0))return render('pd-res',[['입력을 확인하세요','—']]);
+    const mgLo=w*lo,mgHi=isFinite(hi)&&hi>lo?w*hi:null;
+    const rows=[];
+    rows.push(['1회 투여량 (mg)',mgHi?`${fmt(mgLo,2)}–${fmt(mgHi,2)}`:fmt(mgLo,2),'mg',!(c>0)]);
+    let st=`mg = ${lo} mg/kg × ${w} kg = ${fmt(mgLo,3)} mg`+(mgHi?`\n     ${hi} mg/kg × ${w} kg = ${fmt(mgHi,3)} mg`:'');
+    if(c>0){rows.push(['투여량 (mL)',mgHi?`${fmt(mgLo/c,2)}–${fmt(mgHi/c,2)}`:fmt(mgLo/c,2),'mL',true]);st+=`\nmL = mg ÷ ${c} mg/mL = ${fmt(mgLo/c,3)}${mgHi?`–${fmt(mgHi/c,3)}`:''} mL`}
+    const flags=[];
+    if(p&&p.dataset.max){const maxDay=w*parseFloat(p.dataset.max);rows.push([p.dataset.maxlabel,fmt(maxDay,1),'mg/day']);st+=`\n1일 최대 = ${p.dataset.max} mg/kg × ${w} kg = ${fmt(maxDay,1)} mg`}
+    if(p&&p.dataset.name.startsWith('아트로핀')&&mgLo<0.1){flags.push(['warn','계산값이 0.1 mg 미만입니다. 아트로핀은 최소 1회 용량 0.1 mg가 통용됩니다 → 0.2 mL.'])}
+    if(p&&p.dataset.name.startsWith('에피네프린')){flags.push(['warn','1:10,000 (0.1 mg/mL) 기준 0.1 mL/kg. 1:1,000 (1 mg/mL) 앰플과 혼동하지 마세요.'])}
+    if(w>50)flags.push(['warn','체중 50 kg 초과: 성인 용량 상한을 넘지 않는지 확인하세요.']);
+    render('pd-res',rows,st,flags.length?flags:null);
+  }
+  function calcBSA(){
+    const w=num('bs-wt'),h=num('bs-ht'),d=num('bs-dose'),ad=num('bs-adult');
+    if(!(w>0&&h>0))return render('bs-res',[['입력을 확인하세요','—']]);
+    const bsa=Math.sqrt(h*w/3600);
+    const rows=[['체표면적 (BSA)',fmt(bsa,2),'m²']];
+    let st=`BSA = √(${h} cm × ${w} kg ÷ 3600) = √${fmt(h*w/3600,4)} = ${fmt(bsa,3)} m²`;
+    if(d>0){rows.push(['처방 용량 × BSA',fmt(d*bsa,2),'mg',true]);st+=`\n용량 = ${d} mg/m² × ${fmt(bsa,3)} m² = ${fmt(d*bsa,3)} mg`}
+    if(ad>0){rows.push(['성인 용량 × BSA ⁄ 1.73',fmt(ad*bsa/1.73,2),'mg']);st+=`\n소아 용량 = ${ad} mg × ${fmt(bsa,3)} ÷ 1.73 = ${fmt(ad*bsa/1.73,3)} mg`}
+    render('bs-res',rows,st);
+  }
+  function calcClassic(){
+    const ad=num('cl-adult'),w=num('cl-wt'),age=num('cl-age'),mo=num('cl-mo');
+    if(!(ad>0))return render('cl-res',[['성인 용량을 입력하세요','—']]);
+    const lb=w*2.2046,rows=[],st=[];
+    if(w>0){rows.push(['Clark (체중)',fmt(ad*lb/150,1),'mg']);st.push(`Clark = ${ad} × (${fmt(lb,1)} lb ÷ 150) = ${fmt(ad*lb/150,2)} mg   (${w} kg = ${fmt(lb,1)} lb)`)}
+    if(age>0){rows.push(['Young (나이)',fmt(ad*age/(age+12),1),'mg']);st.push(`Young = ${ad} × (${age} ÷ (${age}+12)) = ${fmt(ad*age/(age+12),2)} mg`)}
+    if(mo>0){rows.push(['Fried (월령)',fmt(ad*mo/150,1),'mg']);st.push(`Fried = ${ad} × (${mo} ÷ 150) = ${fmt(ad*mo/150,2)} mg`)}
+    render('cl-res',rows.length?rows:[['체중·나이·월령 중 하나를 입력하세요','—']],st.join('\n'));
+  }
+
+  /* ---------- 용량 환산 ---------- */
+  $('d-form').addEventListener('change',()=>{$('d-per-unit').textContent=$('d-form').value;if($('d-form').value!=='mL')$('d-per').value=1;recalcAll()});
+  function calcDHQ(){
+    const D=num('d-order'),H=num('d-have'),Q=num('d-per'),form=$('d-form').value;
+    if(!(D>=0&&H>0&&Q>0))return render('d-res',[['입력을 확인하세요','—']]);
+    const x=D/H*Q;
+    const flags=[];
+    if(form!=='mL'&&Math.abs(x*2-Math.round(x*2))>1e-9)flags.push(['warn','정제 수가 1/2 단위로 떨어지지 않습니다. 함량이 다른 제형이 있는지 확인하세요.']);
+    if(form==='캡슐'&&Math.abs(x-Math.round(x))>1e-9)flags.push(['crit','캡슐은 분할할 수 없습니다.']);
+    render('d-res',[['투여량',fmt(x,2),form,true]],`D ÷ H × Q = ${D} mg ÷ ${H} mg × ${Q} ${form} = ${fmt(x,3)} ${form}`,flags.length?flags:null);
+  }
+  const toG={g:1,mg:1e-3,mcg:1e-6},toL={L:1,mL:1e-3};
+  $('u-from').addEventListener('change',()=>{$('u-from-unit').textContent=$('u-from').value;recalcAll()});
+  function calcUnit(){
+    const v=num('u-val'),u=$('u-from').value;
+    if(!isFinite(v))return render('u-res',[['값을 입력하세요','—']]);
+    const rows=[];
+    if(u in toG){const g=v*toG[u];rows.push(['g',fmt(g,6),'g'],['mg',fmt(g*1e3,4),'mg'],['mcg',fmt(g*1e6,2),'mcg'])}
+    else{const L=v*toL[u];rows.push(['L',fmt(L,4),'L'],['mL',fmt(L*1e3,2),'mL'])}
+    render('u-res',rows,u in toG?`소수점을 세 자리씩 이동: g → mg (×1,000) → mcg (×1,000)`:`L → mL (×1,000)`);
+  }
+  function calcPct(){
+    const p=num('pc-pct'),v=num('pc-vol');
+    if(!(p>=0&&v>=0))return render('pc-res',[['입력을 확인하세요','—']]);
+    const g=p*v/100;
+    render('pc-res',[['농도',fmt(p*10,2),'mg/mL'],['용액 내 약물량',fmt(g,3),'g',true],['',fmt(g*1000,1),'mg']],
+      `${p}% = ${p} g / 100 mL = ${fmt(p*10,2)} mg/mL\n${fmt(p*10,2)} mg/mL × ${v} mL = ${fmt(g*1000,2)} mg = ${fmt(g,3)} g`);
+  }
+
+  /* ---------- 연습문제 ---------- */
+  let qType='drip',cur=null,done=0,ok=0;
+  const R=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
+  const pick=a=>a[R(0,a.length-1)];
+  $('qz-type').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;$('qz-type').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed','false'));b.setAttribute('aria-pressed','true');qType=b.dataset.t;newQ()});
+  function genQ(t){
+    if(t==='mix')t=pick(['drip','maint','dhq','mgkg']);
+    if(t==='drip'){const V=pick([500,1000,1000,250]),T=pick([4,6,8,10,12,24]),df=pick([10,15,20,60]);const ans=V*df/(T*60);
+      return{txt:`<b>${V} mL</b>를 <b>${T}시간</b> 동안 주입하도록 처방되었다. 수액세트는 <b>${df} gtt/mL</b>이다. 분당 방울수는?`,unit:'gtt/min',ans:Math.round(ans),tol:1,sol:`${V} × ${df} ÷ (${T} × 60) = ${fmt(ans,2)} → ${Math.round(ans)} gtt/min`}}
+    if(t==='maint'){const w=pick([6,8,12,15,18,22,25,30]);let m=Math.min(w,10)*4+Math.max(Math.min(w-10,10),0)*2+Math.max(w-20,0);
+      return{txt:`체중 <b>${w} kg</b> 소아의 시간당 유지수액량은? (Holliday–Segar 4-2-1)`,unit:'mL/h',ans:m,tol:0.01,sol:`${Math.min(w,10)}×4${w>10?` + ${Math.min(w-10,10)}×2`:''}${w>20?` + ${w-20}×1`:''} = ${m} mL/h`}}
+    if(t==='dhq'){const H=pick([125,250,100,50,80]),Q=pick([5,2,1]),mult=pick([0.5,1,1.5,2,2.5,3]),D=H*mult,ans=D/H*Q;const f=Q===1?'정':'mL';
+      return{txt:`처방: <b>${D} mg</b>. 보유 약물은 <b>${H} mg / ${Q} ${f}</b>이다. 투여할 양은?`,unit:f,ans:ans,tol:0.01,sol:`${D} ÷ ${H} × ${Q} = ${fmt(ans,2)} ${f}`}}
+    const w=pick([5,8,10,12,15,18,20,25]),dpk=pick([10,15,5,8,20]),c=pick([32,20,40,50,100]),mg=w*dpk,ans=mg/c;
+    return{txt:`체중 <b>${w} kg</b> 소아에게 <b>${dpk} mg/kg</b>을 투여한다. 약물 농도는 <b>${c} mg/mL</b>이다. 투여할 양(mL)은?`,unit:'mL',ans:ans,tol:0.01,sol:`${dpk} × ${w} = ${mg} mg → ${mg} ÷ ${c} = ${fmt(ans,2)} mL`};
+  }
+  function newQ(){cur=genQ(qType);$('qz-q').innerHTML=cur.txt;$('qz-unit').textContent=cur.unit;$('qz-ans').value='';$('qz-res').innerHTML='';$('qz-ans').focus()}
+  $('qz-new').addEventListener('click',newQ);
+  $('qz-check').addEventListener('click',()=>{if(!cur)return newQ();const a=parseFloat($('qz-ans').value);if(!isFinite(a)){$('qz-res').innerHTML='<span class="no">숫자를 입력하세요.</span>';return}
+    const good=cur.tol>=1?Math.abs(a-cur.ans)<=cur.tol:Math.abs(a-cur.ans)<=Math.max(cur.ans*cur.tol,0.005);
+    done++;if(good)ok++;$('qz-score').textContent=`${done} / ${ok}`;
+    $('qz-res').innerHTML=(good?'<span class="ok">정답</span>':`<span class="no">오답</span> · 정답 <b>${fmt(cur.ans,2)} ${cur.unit}</b>`)+`<div class="steps">풀이: ${cur.sol}</div>`});
+  $('qz-ans').addEventListener('keydown',e=>{if(e.key==='Enter')$('qz-check').click()});
+
+  function recalcAll(){calcDrip();calcRate();calcMaint();calcBolus();calcPeds();calcBSA();calcClassic();calcDHQ();calcUnit();calcPct()}
+  document.querySelectorAll('input,select').forEach(el=>el.addEventListener('input',recalcAll));
+  $('u-from-unit').textContent=$('u-from').value;
+  recalcAll();newQ();
+})();
+</script>
+</body>
+</html>
